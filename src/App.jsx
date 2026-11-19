@@ -9,7 +9,7 @@ import poolIcon from "./assets/pool.png";
 import diningIcon from "./assets/dining.png";
 import fitnessIcon from "./assets/fitness.png";
 import loungeIcon from "./assets/lounge.png";
-import footerLogo from "./assets/logo-footer.png";
+import footerLogo from "./src/assets/logo-footer.png";
 import facebookIcon from "./assets/facebook.png";
 import instagramIcon from "./assets/instagram.png";
 import xIcon from "./assets/X.png";
