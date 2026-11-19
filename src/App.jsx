@@ -10,10 +10,10 @@ import diningIcon from "./assets/dining.png";
 import fitnessIcon from "./assets/fitness.png";
 import loungeIcon from "./assets/lounge.png";
 import footerLogo from "./assets/Logo-footer.png";
-import facebookIcon from "./assets/facebook.png";
-import instagramIcon from "./assets/instagram.png";
+import facebookIcon from "./assets/Facebook.png";
+import instagramIcon from "./assets/Instagram.png";
 import xIcon from "./assets/X.png";
-import linkedinIcon from "./assets/linkedin.png";
+import linkedinIcon from "./assets/Linkedin.png";
 
 const AMENITIES = [
   {
