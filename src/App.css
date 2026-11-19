@@ -11,7 +11,9 @@
   --white: #ffffff;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -125,6 +127,23 @@ body {
 .logo-sub {
   font-size: 12px;
   font-weight: 500;
+}
+
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: 1px solid rgba(24, 24, 24, 0.16);
+  border-radius: 6px;
+  color: var(--text-dark);
+  font-size: 20px;
+  line-height: 1;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.navbar-teal .hamburger-btn {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .nav-links {
@@ -674,14 +693,10 @@ body {
 }
 
 .footer-logo {
-  color: var(--white);
-  margin-bottom: 14px;
-}
-
-.footer-logo {
   display: flex;
   align-items: center;
   gap: 10px;
+  color: var(--white);
   margin-bottom: 14px;
 }
 
@@ -691,6 +706,7 @@ body {
   object-fit: contain;
   display: block;
 }
+
 .footer-desc {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.82);
@@ -799,9 +815,54 @@ body {
 }
 
 @media (max-width: 600px) {
-  .nav-item {
-    display: none;
+  .hamburger-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border-bottom: 1px solid var(--border-light);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px 24px 16px;
+  }
+
+  .navbar-teal .nav-links {
+    background: var(--teal-primary);
+    border-bottom-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .nav-links.open {
+    display: flex;
+  }
+
+  .nav-item {
+    text-align: left;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: 14px;
+  }
+
+  .navbar-teal .nav-item {
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .nav-links .btn-teal,
+  .nav-links .btn-gold {
+    margin-top: 12px;
+    width: 100%;
+    text-align: center;
+  }
+
   .booking-bar,
   .rooms-grid,
   .amenities-grid,

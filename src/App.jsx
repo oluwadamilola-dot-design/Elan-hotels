@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import logo from "./assets/logo.png";
 import spaIcon from "./assets/spa.png";
@@ -331,6 +331,8 @@ export default function App() {
   const [activeScreen, setActiveScreen] = useState("home");
   const [selectedRoom, setSelectedRoom] = useState(ROOMS_DATA[0]);
   const [bookedToast, setBookedToast] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navRef = useRef(null);
 
   const [searchForm, setSearchForm] = useState({
     checkIn: "2026-11-20",
@@ -341,6 +343,26 @@ export default function App() {
   const [bedFilter, setBedFilter] = useState("All");
   const [viewFilter, setViewFilter] = useState("All");
   const [maxPriceFilter, setMaxPriceFilter] = useState("All");
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleOutsideClick = (event) => {
+      if (navRef.current && !navRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsideClick);
+    };
+  }, [menuOpen]);
+
+  const handleNavClick = (action) => {
+    setMenuOpen(false);
+    action();
+  };
 
   const openRoomDetail = (room) => {
     setSelectedRoom(room);
@@ -374,47 +396,62 @@ export default function App() {
 
       {/* Top Navigation */}
       <header
+        ref={navRef}
         className={`navbar ${activeScreen !== "home" ? "navbar-teal" : ""}`}
       >
         <div className="container nav-inner">
           <button
             type="button"
             className="brand-logo btn-reset"
-            onClick={() => navigateTo("home")}
+            onClick={() => handleNavClick(() => navigateTo("home"))}
           >
             <img src={logo} alt="Elan Hotels" className="logo-img" />
           </button>
 
-          <nav className="nav-links">
+          <button
+            type="button"
+            className="hamburger-btn"
+            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((prev) => !prev)}
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
+
+          <nav className={`nav-links ${menuOpen ? "open" : ""}`}>
             <button
               type="button"
               className={`nav-item ${activeScreen === "rooms" ? "active" : ""}`}
-              onClick={() => navigateTo("rooms")}
+              onClick={() => handleNavClick(() => navigateTo("rooms"))}
             >
               Our Rooms
             </button>
             <button
               type="button"
               className="nav-item"
-              onClick={() => {
-                navigateTo("home");
-                setTimeout(() => {
-                  document
-                    .getElementById("amenities")
-                    ?.scrollIntoView({ behavior: "smooth" });
-                }, 100);
-              }}
+              onClick={() =>
+                handleNavClick(() => {
+                  navigateTo("home");
+                  setTimeout(() => {
+                    document
+                      .getElementById("amenities")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }, 100);
+                })
+              }
             >
               Amenities &amp; Spa
             </button>
             <button
               type="button"
               className="nav-item"
-              onClick={() => {
-                document
-                  .getElementById("footer")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
+              onClick={() =>
+                handleNavClick(() => {
+                  document
+                    .getElementById("footer")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                })
+              }
             >
               Contact Us
             </button>
@@ -422,7 +459,7 @@ export default function App() {
             <button
               type="button"
               className={activeScreen === "home" ? "btn-teal" : "btn-gold"}
-              onClick={() => navigateTo("rooms")}
+              onClick={() => handleNavClick(() => navigateTo("rooms"))}
             >
               Book a Stay
             </button>
@@ -591,9 +628,7 @@ export default function App() {
                     </div>
                     <div className="stars">★★★★★</div>
                     <p className="review-text">“{review.text}”</p>
-                    <span className="review-author">
-                      {review.guest}
-                    </span>
+                    <span className="review-author">{review.guest}</span>
                   </article>
                 ))}
               </div>
