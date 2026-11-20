@@ -20,6 +20,17 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      
+      - name: Scan repository for exposed secrets
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo:ro" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git --redact --exit-code 1 /repo
+
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
