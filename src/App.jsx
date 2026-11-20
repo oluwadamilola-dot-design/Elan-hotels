@@ -15,6 +15,10 @@ import instagramIcon from "./assets/Instagram.png";
 import xIcon from "./assets/X.png";
 import linkedinIcon from "./assets/Linkedin.png";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://elan-hotels-backend-production.up.railway.app";
+
 const AMENITIES = [
   {
     title: "Spa Retreat",
@@ -376,11 +380,66 @@ const getTodayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
+const parseGuestNumber = (guestsLabel) => {
+  const match = String(guestsLabel || "").match(/\d+/);
+  return match ? Number(match[0]) : 1;
+};
+
+const normalizeApiRoom = (apiRoom, index) => {
+  const fallback = ROOMS_DATA[index % ROOMS_DATA.length];
+  const numericPrice = Number(
+    apiRoom.priceNum ?? apiRoom.pricePerNight ?? apiRoom.price ?? fallback.priceNum
+  );
+  const safePriceNum =
+    Number.isFinite(numericPrice) && numericPrice > 0
+      ? numericPrice
+      : fallback.priceNum;
+
+  const guestsVal =
+    typeof apiRoom.guests === "number"
+      ? `${apiRoom.guests} Guests`
+      : apiRoom.guests || apiRoom.maxGuests || fallback.guests;
+
+  return {
+    ...fallback,
+    ...apiRoom,
+    id: apiRoom.id ?? apiRoom._id ?? fallback.id,
+    title: apiRoom.title || apiRoom.name || fallback.title,
+    bedType: apiRoom.bedType || fallback.bedType,
+    view: apiRoom.view || fallback.view,
+    priceNum: safePriceNum,
+    price:
+      typeof apiRoom.price === "string" && apiRoom.price.includes("₦")
+        ? apiRoom.price
+        : `₦${safePriceNum.toLocaleString()}`,
+    guests: guestsVal,
+    beds: apiRoom.beds || apiRoom.bedConfig || fallback.beds,
+    size: apiRoom.size || fallback.size,
+    rating: apiRoom.rating || fallback.rating,
+    availableUnits:
+      apiRoom.availableUnits ?? apiRoom.unitsAvailable ?? fallback.availableUnits,
+    blockedRanges: Array.isArray(apiRoom.blockedRanges)
+      ? apiRoom.blockedRanges
+      : fallback.blockedRanges,
+    image: apiRoom.image || apiRoom.imageUrl || fallback.image,
+    about: apiRoom.about || apiRoom.description || fallback.about,
+    amenitiesLeft: Array.isArray(apiRoom.amenitiesLeft)
+      ? apiRoom.amenitiesLeft
+      : fallback.amenitiesLeft,
+    amenitiesRight: Array.isArray(apiRoom.amenitiesRight)
+      ? apiRoom.amenitiesRight
+      : fallback.amenitiesRight,
+  };
+};
+
 export default function App() {
   const earliestCheckInDate = getTodayDateString();
 
   const [activeScreen, setActiveScreen] = useState("home");
+  const [roomsList, setRoomsList] = useState(ROOMS_DATA);
   const [selectedRoom, setSelectedRoom] = useState(ROOMS_DATA[0]);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(false);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [bookedToast, setBookedToast] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef(null);
@@ -425,6 +484,54 @@ export default function App() {
     errorMessage: "",
   });
   const [copiedId, setCopiedId] = useState(false);
+
+  // Booking lookup modal state (POST /bookings/lookup)
+  const [showLookupModal, setShowLookupModal] = useState(false);
+  const [lookupForm, setLookupForm] = useState({
+    bookingReference: "",
+    guestEmail: "",
+  });
+  const [lookupResult, setLookupResult] = useState(null);
+  const [lookupError, setLookupError] = useState("");
+  const [isLookingUp, setIsLookingUp] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRooms = async () => {
+      setIsLoadingRooms(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/rooms`);
+        if (!res.ok) {
+          throw new Error(`Rooms request failed with status ${res.status}`);
+        }
+        const data = await res.json();
+        const rawRooms = Array.isArray(data)
+          ? data
+          : data.rooms || data.data || [];
+
+        if (isMounted && rawRooms.length > 0) {
+          const normalized = rawRooms.map(normalizeApiRoom);
+          setRoomsList(normalized);
+          setSelectedRoom((prev) => {
+            const match = normalized.find(
+              (room) => String(room.id) === String(prev?.id)
+            );
+            return match || normalized[0];
+          });
+        }
+      } catch (err) {
+        console.warn("Falling back to local rooms data:", err.message);
+      } finally {
+        if (isMounted) setIsLoadingRooms(false);
+      }
+    };
+
+    loadRooms();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -600,7 +707,7 @@ export default function App() {
     return flags;
   };
 
-  const handleCheckoutRequestSubmit = (e) => {
+  const handleCheckoutRequestSubmit = async (e) => {
     e.preventDefault();
 
     const dateTimeFlags = validateCheckInDateAndTime(
@@ -622,10 +729,92 @@ export default function App() {
     }
 
     setBookingValidationFlags([]);
-    const randomId = `ID-${Math.floor(100000 + Math.random() * 900000)}`;
-    setBookingRef(randomId);
-    setCopiedId(false);
-    setShowBookingModal(true);
+    setIsSubmittingBooking(true);
+
+    const requestBody = {
+      roomId: selectedRoom.id,
+      guestName: guestInfo.fullName.trim(),
+      guestEmail: guestInfo.email.trim(),
+      guestPhone: guestInfo.phone.trim(),
+      checkIn: searchForm.checkIn,
+      checkOut: searchForm.checkOut,
+      numberOfGuests: parseGuestNumber(searchForm.guests),
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const message =
+          data.message ||
+          data.error ||
+          "Could not complete reservation request. Please try again.";
+        setBookingValidationFlags([message]);
+        return;
+      }
+
+      const bookingObj = data.booking || data.data || data;
+      const serverRef =
+        bookingObj.bookingReference ||
+        bookingObj.reference ||
+        bookingObj.id ||
+        `ID-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      setBookingRef(String(serverRef));
+      setLookupForm({
+        bookingReference: String(serverRef),
+        guestEmail: requestBody.guestEmail,
+      });
+      setCopiedId(false);
+      setShowBookingModal(true);
+    } catch (err) {
+      setBookingValidationFlags([
+        `Network error while creating booking: ${err.message}`,
+      ]);
+    } finally {
+      setIsSubmittingBooking(false);
+    }
+  };
+
+  const handleBookingLookupSubmit = async (e) => {
+    e.preventDefault();
+    setLookupError("");
+    setLookupResult(null);
+    setIsLookingUp(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingReference: lookupForm.bookingReference.trim(),
+          guestEmail: lookupForm.guestEmail.trim(),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setLookupError(
+          data.message ||
+            data.error ||
+            "No reservation found with that booking reference and email."
+        );
+        return;
+      }
+
+      setLookupResult(data.booking || data.data || data);
+    } catch (err) {
+      setLookupError(`Network error during lookup: ${err.message}`);
+    } finally {
+      setIsLookingUp(false);
+    }
   };
 
   const handleUpdateSearch = () => {
@@ -651,7 +840,7 @@ export default function App() {
   const requestedGuests = getGuestCapacity(searchForm.guests);
 
   const filteredRooms = (() => {
-    const baseList = ROOMS_DATA.filter((room) => {
+    const baseList = roomsList.filter((room) => {
       if (bedFilter !== "All" && room.bedType !== bedFilter) return false;
       if (viewFilter !== "All" && room.view !== viewFilter) return false;
       if (maxPriceFilter === "Under100k" && room.priceNum >= 100000) return false;
@@ -664,9 +853,9 @@ export default function App() {
     }
 
     const shuffled = [...baseList].sort((a, b) => {
-      const hashA = ((a.id * 37 + searchShuffleSeed * 17) % 100) / 100;
-      const hashB = ((b.id * 37 + searchShuffleSeed * 17) % 100) / 100;
-      return hashA - hashB;
+      const hashA = ((Number(a.id) || 1) * 37 + searchShuffleSeed * 17) % 100;
+      const hashB = ((Number(b.id) || 1) * 37 + searchShuffleSeed * 17) % 100;
+      return hashA / 100 - hashB / 100;
     });
 
     return shuffled.sort((a, b) => {
@@ -711,18 +900,31 @@ export default function App() {
           </button>
 
           {isCheckoutFlow ? (
-            <button
-              type="button"
-              className="nav-item"
-              onClick={() => {
-                setBookedToast(
-                  "Need help? Contact reservations@elanhotels.com or call +234 800 123 4567"
-                );
-                setTimeout(() => setBookedToast(""), 6000);
-              }}
-            >
-              Need Help?
-            </button>
+            <div className="nav-links open">
+              <button
+                type="button"
+                className="nav-item"
+                onClick={() => {
+                  setLookupError("");
+                  setLookupResult(null);
+                  setShowLookupModal(true);
+                }}
+              >
+                Find Booking
+              </button>
+              <button
+                type="button"
+                className="nav-item"
+                onClick={() => {
+                  setBookedToast(
+                    "Need help? Contact reservations@elanhotels.com or call +234 800 123 4567"
+                  );
+                  setTimeout(() => setBookedToast(""), 6000);
+                }}
+              >
+                Need Help?
+              </button>
+            </div>
           ) : (
             <>
               <button
@@ -762,6 +964,19 @@ export default function App() {
                   }
                 >
                   Amenities &amp; Spa
+                </button>
+                <button
+                  type="button"
+                  className="nav-item"
+                  onClick={() =>
+                    handleNavClick(() => {
+                      setLookupError("");
+                      setLookupResult(null);
+                      setShowLookupModal(true);
+                    })
+                  }
+                >
+                  Find Booking
                 </button>
                 <button
                   type="button"
@@ -870,13 +1085,14 @@ export default function App() {
               <div className="section-header">
                 <h2>Discover Your Stay</h2>
                 <p>
-                  Thoughtfully designed rooms and suites blending modern elegance
-                  with restful comfort.
+                  {isLoadingRooms
+                    ? "Loading available rooms..."
+                    : "Thoughtfully designed rooms and suites blending modern elegance with restful comfort."}
                 </p>
               </div>
 
               <div className="rooms-grid">
-                {ROOMS_DATA.slice(0, 4).map((room) => (
+                {roomsList.slice(0, 4).map((room) => (
                   <article
                     key={room.id}
                     className="room-card clickable"
@@ -1320,8 +1536,14 @@ export default function App() {
                   </div>
                 )}
 
-                <button type="submit" className="btn-teal">
-                  Confirm Request
+                <button
+                  type="submit"
+                  className="btn-teal"
+                  disabled={isSubmittingBooking}
+                >
+                  {isSubmittingBooking
+                    ? "Submitting Request..."
+                    : "Confirm Request"}
                 </button>
               </form>
 
@@ -1367,6 +1589,100 @@ export default function App() {
             </div>
           </div>
         </section>
+      )}
+
+      {/* BOOKING LOOKUP MODAL (POST /bookings/lookup) */}
+      {showLookupModal && (
+        <div
+          className="booking-modal-backdrop"
+          onClick={() => setShowLookupModal(false)}
+        >
+          <div
+            className="booking-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Find Your Reservation</h3>
+            <p className="modal-desc">
+              Enter your booking reference and guest email to look up your
+              booking.
+            </p>
+
+            <form onSubmit={handleBookingLookupSubmit}>
+              <div className="form-group">
+                <label>Booking Reference</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. ELN-123456 or ID-123455"
+                  value={lookupForm.bookingReference}
+                  onChange={(e) =>
+                    setLookupForm({
+                      ...lookupForm,
+                      bookingReference: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Guest Email</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  value={lookupForm.guestEmail}
+                  onChange={(e) =>
+                    setLookupForm({
+                      ...lookupForm,
+                      guestEmail: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              {lookupError && (
+                <div className="validation-flag-box" role="alert">
+                  {lookupError}
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-outline-danger"
+                  onClick={() => setShowLookupModal(false)}
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  className="btn-teal"
+                  disabled={isLookingUp}
+                >
+                  {isLookingUp ? "Searching..." : "Lookup Booking"}
+                </button>
+              </div>
+            </form>
+
+            {lookupResult && (
+              <div className="modal-ref-box" style={{ marginTop: "18px" }}>
+                <span>Reservation Found</span>
+                <strong>
+                  {lookupResult.bookingReference ||
+                    lookupResult.reference ||
+                    lookupForm.bookingReference}
+                </strong>
+                <p className="modal-desc" style={{ marginBottom: 0 }}>
+                  {lookupResult.guestName && `Guest: ${lookupResult.guestName}`}
+                  {lookupResult.checkIn &&
+                    lookupResult.checkOut &&
+                    ` • ${lookupResult.checkIn} to ${lookupResult.checkOut}`}
+                  {lookupResult.status && ` • Status: ${lookupResult.status}`}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* BOOKING REQUEST CONFIRMATION MODAL */}
