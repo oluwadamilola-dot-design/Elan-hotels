@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
+import AIConcierge from "./components/AIConcierge";
 import logo from "./assets/logo.png";
 import spaIcon from "./assets/spa.png";
 import breakfastIcon from "./assets/breakfast.png";
@@ -2501,6 +2502,9 @@ export default function App() {
           </div>
         </footer>
       )}
+      <AIConcierge
+        hidden={isCheckoutFlow || showLookupModal || showBookingModal || paymentModal.open}
+      />
     </div>
   );
 }
