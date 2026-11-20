@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import hotelFaq from "../data/hotelFaq.js";
-import { conciergeTopics, getConciergeReply } from "./concierge.js";
+import { conciergeTopics, getConciergeMatch, getConciergeReply } from "./concierge.js";
 
 const fallback =
   "I'm sorry, I don't have information about that. Please contact hotel reception for assistance.";
@@ -50,4 +50,18 @@ test("suggested topics use the team's questions", () => {
     assert.equal(topic.question, hotelFaq[index].question);
     assert.equal(getConciergeReply(topic.question), hotelFaq[index].answer);
   });
+});
+
+test("greets hi, hello, and hey with case and punctuation variations", () => {
+  for (const question of ["hi", "hello", "hey", "HI!", " Hello. ", "hey there!", "hi 👋"]) {
+    const match = getConciergeMatch(question);
+    assert.equal(match.kind, "greeting", question);
+    assert.match(match.answer, /Hello! Welcome to Elan Hotels/);
+    assert.equal(match.confidence, 1);
+  }
+});
+
+test("a greeting prefix does not replace a guest's actual question", () => {
+  assert.equal(getConciergeReply("Hi, what time is breakfast served?"), hotelFaq[0].answer);
+  assert.notEqual(getConciergeMatch("highway").kind, "greeting");
 });
