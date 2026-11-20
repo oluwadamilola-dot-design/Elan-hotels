@@ -569,6 +569,39 @@ body {
   text-decoration: underline;
 }
 
+/* Right-aligned Bordered Recommend Box */
+.recommend-box {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid var(--teal-primary);
+  border-radius: 6px;
+  padding: 4px 12px;
+  background: var(--white);
+}
+
+.recommend-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal-primary);
+  white-space: nowrap;
+}
+
+.recommend-box select {
+  border: none;
+  background: transparent;
+  padding: 4px 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+
+.recommend-box select:focus {
+  outline: none;
+}
+
 .catalog-grid {
   row-gap: 32px;
 }
@@ -900,6 +933,12 @@ body {
     text-align: center;
   }
 
+  .recommend-box {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .booking-bar,
   .rooms-grid,
   .amenities-grid,
@@ -1191,7 +1230,7 @@ body {
   color: var(--text-muted);
 }
 
-/* Booking Request Confirmation Modal */
+/* Booking Request Confirmation & Lookup Modals */
 .booking-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1211,6 +1250,72 @@ body {
   padding: 32px 28px;
   text-align: center;
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+}
+
+.lookup-modal-card {
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+}
+
+.lookup-modal-card h3,
+.lookup-modal-card .modal-desc {
+  text-align: left;
+}
+
+.lookup-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+}
+
+.lookup-email-field {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.lookup-email-field label {
+  width: 100%;
+  text-align: left;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.lookup-details-box {
+  margin-top: 20px;
+  background-color: var(--periwinkle-bg);
+  border: 1px dashed #b8c4d6;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: left;
+}
+
+.lookup-ref-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(18, 96, 96, 0.16);
+}
+
+.lookup-ref-header span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+
+.lookup-ref-header strong {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--teal-primary);
 }
 
 .modal-check-circle {
@@ -1393,8 +1498,8 @@ body {
 }
 
 .payment-done-btn {
-  min-width: 112px;
-  padding: 11px 28px;
+  min-width: 150px;
+  padding: 11px 22px;
 }
 
 /* Responsive Stacking for Checkout & Payment */

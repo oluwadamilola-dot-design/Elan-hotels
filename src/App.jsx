@@ -19,6 +19,33 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   "https://elan-hotels-backend-production.up.railway.app";
 
+const LATEST_BOOKINGS_KEY = "elan_latest_bookings_by_email";
+
+const saveLatestBookingForEmail = (email, record) => {
+  if (!email) return;
+  try {
+    const existing = JSON.parse(
+      localStorage.getItem(LATEST_BOOKINGS_KEY) || "{}"
+    );
+    existing[email.trim().toLowerCase()] = record;
+    localStorage.setItem(LATEST_BOOKINGS_KEY, JSON.stringify(existing));
+  } catch {
+    // Ignore storage quota errors
+  }
+};
+
+const getLatestBookingForEmail = (email) => {
+  if (!email) return null;
+  try {
+    const existing = JSON.parse(
+      localStorage.getItem(LATEST_BOOKINGS_KEY) || "{}"
+    );
+    return existing[email.trim().toLowerCase()] || null;
+  } catch {
+    return null;
+  }
+};
+
 const AMENITIES = [
   {
     title: "Spa Retreat",
@@ -310,6 +337,126 @@ const ROOMS_DATA = [
       "24/7 In-Suite Dining",
     ],
   },
+  {
+    id: 9,
+    title: "Coastal Balcony Room",
+    bedType: "King",
+    view: "Ocean View",
+    priceNum: 110000,
+    price: "₦110,000",
+    guests: "2 Guests",
+    beds: "1 King Bed",
+    size: "42 m²",
+    rating: "4.8",
+    availableUnits: 3,
+    blockedRanges: [],
+    image:
+      "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=1000&q=80",
+    about:
+      "Wake up to gentle sea breezes from your private furnished balcony, paired with warm coastal interiors and a spacious walk-in rain shower.",
+    amenitiesLeft: [
+      "Private Balcony",
+      "High-Speed Wi-Fi",
+      "Smart 55” TV",
+      "Rain Shower",
+    ],
+    amenitiesRight: [
+      "Air Conditioning",
+      "Nespresso Machine",
+      "In-Room Safe",
+      "24/7 Room Service",
+    ],
+  },
+  {
+    id: 10,
+    title: "Courtyard Twin Suite",
+    bedType: "Twin",
+    view: "Garden View",
+    priceNum: 92000,
+    price: "₦92,000",
+    guests: "2 Guests",
+    beds: "2 Twin Beds",
+    size: "38 m²",
+    rating: "4.7",
+    availableUnits: 3,
+    blockedRanges: [],
+    image:
+      "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=1000&q=80",
+    about:
+      "Overlooking our quiet inner courtyard, this twin suite offers restful acoustic comfort, dual ergonomic desks, and organic cotton linens.",
+    amenitiesLeft: [
+      "Courtyard View",
+      "High-Speed Wi-Fi",
+      "Dual Work Desks",
+      "Walk-in Shower",
+    ],
+    amenitiesRight: [
+      "Air Conditioning",
+      "Tea & Coffee Set",
+      "Electronic Safe",
+      "Daily Housekeeping",
+    ],
+  },
+  {
+    id: 11,
+    title: "Royal Panorama Suite",
+    bedType: "King",
+    view: "City View",
+    priceNum: 185000,
+    price: "₦185,000",
+    guests: "4 Guests",
+    beds: "1 King + 1 Sofa Bed",
+    size: "74 m²",
+    rating: "5.0",
+    availableUnits: 2,
+    blockedRanges: [],
+    image:
+      "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=1000&q=80",
+    about:
+      "Commanding 270-degree skyline views, the Royal Panorama Suite features an expansive living salon, wet bar, and spa-inspired marble bath.",
+    amenitiesLeft: [
+      "270° Skyline View",
+      "Fiber Wi-Fi",
+      "Soaking Tub & Shower",
+      "Private Bar",
+    ],
+    amenitiesRight: [
+      "Complimentary Breakfast",
+      "Executive Lounge",
+      "Airport Transfer",
+      "24/7 Concierge",
+    ],
+  },
+  {
+    id: 12,
+    title: "Oasis Family Room",
+    bedType: "Twin",
+    view: "Garden View",
+    priceNum: 130000,
+    price: "₦130,000",
+    guests: "4 Guests",
+    beds: "2 Queen Beds",
+    size: "55 m²",
+    rating: "4.9",
+    availableUnits: 2,
+    blockedRanges: [],
+    image:
+      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1000&q=80",
+    about:
+      "Thoughtfully configured for families and small groups, offering two plush queen beds, garden access, and generous lounge seating.",
+    amenitiesLeft: [
+      "Two Queen Beds",
+      "High-Speed Wi-Fi",
+      "Smart 60” TV",
+      "Double Vanity",
+    ],
+    amenitiesRight: [
+      "Breakfast Included",
+      "Mini Fridge",
+      "In-Room Safe",
+      "24/7 Room Service",
+    ],
+  },
 ];
 
 const REVIEWS = [
@@ -380,6 +527,21 @@ const getTodayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
+const stripTimestamp = (dateValue) => {
+  if (!dateValue) return "";
+  const str = String(dateValue).trim();
+  const isoMatch = str.match(/^\d{4}-\d{2}-\d{2}/);
+  if (isoMatch) return isoMatch[0];
+  return str.split("T")[0].split(" ")[0];
+};
+
+const formatDateRangeSlash = (checkIn, checkOut) => {
+  const start = stripTimestamp(checkIn);
+  const end = stripTimestamp(checkOut) || start;
+  if (!start && !end) return "";
+  return `${start}/${end}`;
+};
+
 const parseGuestNumber = (guestsLabel) => {
   const match = String(guestsLabel || "").match(/\d+/);
   return match ? Number(match[0]) : 1;
@@ -403,6 +565,7 @@ const normalizeApiRoom = (apiRoom, index) => {
   return {
     ...fallback,
     ...apiRoom,
+    backendId: apiRoom.id ?? apiRoom._id ?? fallback.id,
     id: apiRoom.id ?? apiRoom._id ?? fallback.id,
     title: apiRoom.title || apiRoom.name || fallback.title,
     bedType: apiRoom.bedType || fallback.bedType,
@@ -458,6 +621,7 @@ export default function App() {
   const [bedFilter, setBedFilter] = useState("All");
   const [viewFilter, setViewFilter] = useState("All");
   const [maxPriceFilter, setMaxPriceFilter] = useState("All");
+  const [recommendSort, setRecommendSort] = useState("Recommended");
 
   // Booking, validation & payment states
   const [guestInfo, setGuestInfo] = useState({
@@ -485,10 +649,9 @@ export default function App() {
   });
   const [copiedId, setCopiedId] = useState(false);
 
-  // Booking lookup modal state (POST /bookings/lookup)
+  // Email-only booking lookup modal state
   const [showLookupModal, setShowLookupModal] = useState(false);
   const [lookupForm, setLookupForm] = useState({
-    bookingReference: "",
     guestEmail: "",
   });
   const [lookupResult, setLookupResult] = useState(null);
@@ -511,13 +674,35 @@ export default function App() {
           : data.rooms || data.data || [];
 
         if (isMounted && rawRooms.length > 0) {
-          const normalized = rawRooms.map(normalizeApiRoom);
-          setRoomsList(normalized);
+          const normalized = rawRooms.map((item, idx) => {
+            const mapped = normalizeApiRoom(item, idx);
+            return {
+              ...mapped,
+              backendId: item.id ?? item._id ?? mapped.id,
+              id: `api-${item.id ?? item._id ?? idx + 1}`,
+            };
+          });
+
+          const existingTitles = new Set(
+            normalized.map((r) => r.title.trim().toLowerCase())
+          );
+
+          const extraRooms = ROOMS_DATA.filter(
+            (r) => !existingTitles.has(r.title.trim().toLowerCase())
+          ).map((r) => ({
+            ...r,
+            backendId: normalized[0]?.backendId ?? r.id,
+            id: `local-${r.id}`,
+          }));
+
+          const combinedRooms = [...normalized, ...extraRooms];
+
+          setRoomsList(combinedRooms);
           setSelectedRoom((prev) => {
-            const match = normalized.find(
+            const match = combinedRooms.find(
               (room) => String(room.id) === String(prev?.id)
             );
-            return match || normalized[0];
+            return match || combinedRooms[0];
           });
         }
       } catch (err) {
@@ -623,7 +808,7 @@ export default function App() {
     return match ? Number(match[0]) : 1;
   };
 
-  const parseDate = (value) => new Date(`${value}T00:00:00`);
+  const parseDate = (value) => new Date(`${stripTimestamp(value)}T00:00:00`);
 
   const isDateRangeOverlapping = (startA, endA, startB, endB) => {
     if (!startA || !endA || !startB || !endB) return false;
@@ -667,7 +852,11 @@ export default function App() {
     );
     if (hasBlockedDates) {
       issues.push(
-        `${room.title} is not available between ${dates.checkIn} and ${dates.checkOut}. Please select different dates or choose another room.`
+        `${room.title} is not available between ${stripTimestamp(
+          dates.checkIn
+        )} and ${stripTimestamp(
+          dates.checkOut
+        )}. Please select different dates or choose another room.`
       );
     }
 
@@ -680,21 +869,23 @@ export default function App() {
   const validateCheckInDateAndTime = (checkInStr, checkOutStr, arrivalNote) => {
     const flags = [];
     const todayStr = getTodayDateString();
+    const cleanCheckIn = stripTimestamp(checkInStr);
+    const cleanCheckOut = stripTimestamp(checkOutStr);
 
-    if (!checkInStr || checkInStr < todayStr) {
+    if (!cleanCheckIn || cleanCheckIn < todayStr) {
       flags.push(
         `Check-in date cannot be earlier than ${todayStr}. Please select today or a future date.`
       );
     }
 
-    if (!checkOutStr || parseDate(checkOutStr) <= parseDate(checkInStr)) {
+    if (!cleanCheckOut || parseDate(cleanCheckOut) <= parseDate(cleanCheckIn)) {
       flags.push(
         "Check-out date must be later than the check-in date (at least 1 night)."
       );
     }
 
     const slot = ARRIVAL_TIME_SLOTS[arrivalNote];
-    if (checkInStr === todayStr && slot) {
+    if (cleanCheckIn === todayStr && slot) {
       const now = new Date();
       const currentHour = now.getHours() + now.getMinutes() / 60;
       if (currentHour > slot.hour + 0.5) {
@@ -731,13 +922,16 @@ export default function App() {
     setBookingValidationFlags([]);
     setIsSubmittingBooking(true);
 
+    const cleanCheckIn = stripTimestamp(searchForm.checkIn);
+    const cleanCheckOut = stripTimestamp(searchForm.checkOut);
+
     const requestBody = {
-      roomId: selectedRoom.id,
+      roomId: selectedRoom.backendId ?? selectedRoom.id,
       guestName: guestInfo.fullName.trim(),
       guestEmail: guestInfo.email.trim(),
       guestPhone: guestInfo.phone.trim(),
-      checkIn: searchForm.checkIn,
-      checkOut: searchForm.checkOut,
+      checkIn: cleanCheckIn,
+      checkOut: cleanCheckOut,
       numberOfGuests: parseGuestNumber(searchForm.guests),
     };
 
@@ -766,11 +960,19 @@ export default function App() {
         bookingObj.id ||
         `ID-${Math.floor(100000 + Math.random() * 900000)}`;
 
-      setBookingRef(String(serverRef));
-      setLookupForm({
+      const latestRecord = {
         bookingReference: String(serverRef),
+        guestName: requestBody.guestName,
         guestEmail: requestBody.guestEmail,
-      });
+        checkIn: stripTimestamp(bookingObj.checkIn || cleanCheckIn),
+        checkOut: stripTimestamp(bookingObj.checkOut || cleanCheckOut),
+        checkInTime: guestInfo.arrivalNote,
+        roomTitle: selectedRoom.title,
+      };
+
+      saveLatestBookingForEmail(requestBody.guestEmail, latestRecord);
+      setBookingRef(String(serverRef));
+      setLookupForm({ guestEmail: requestBody.guestEmail });
       setCopiedId(false);
       setShowBookingModal(true);
     } catch (err) {
@@ -788,30 +990,84 @@ export default function App() {
     setLookupResult(null);
     setIsLookingUp(true);
 
+    const email = lookupForm.guestEmail.trim();
+    const cachedBooking = getLatestBookingForEmail(email);
+    const resolvedRef =
+      cachedBooking?.bookingReference ||
+      (guestInfo.email.trim().toLowerCase() === email.toLowerCase()
+        ? bookingRef
+        : "");
+
     try {
       const res = await fetch(`${API_BASE_URL}/bookings/lookup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bookingReference: lookupForm.bookingReference.trim(),
-          guestEmail: lookupForm.guestEmail.trim(),
+          bookingReference: resolvedRef,
+          guestEmail: email,
         }),
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        if (cachedBooking) {
+          setLookupResult({
+            ...cachedBooking,
+            checkIn: stripTimestamp(cachedBooking.checkIn),
+            checkOut: stripTimestamp(cachedBooking.checkOut),
+          });
+          return;
+        }
         setLookupError(
           data.message ||
             data.error ||
-            "No reservation found with that booking reference and email."
+            "No recent reservation found for that email address."
         );
         return;
       }
 
-      setLookupResult(data.booking || data.data || data);
+      const apiBooking = data.booking || data.data || data;
+      setLookupResult({
+        bookingReference:
+          apiBooking.bookingReference ||
+          apiBooking.reference ||
+          apiBooking.id ||
+          resolvedRef,
+        guestName:
+          apiBooking.guestName ||
+          apiBooking.guest_name ||
+          cachedBooking?.guestName ||
+          guestInfo.fullName ||
+          "Guest",
+        checkIn: stripTimestamp(
+          apiBooking.checkIn ||
+            apiBooking.check_in ||
+            cachedBooking?.checkIn ||
+            searchForm.checkIn
+        ),
+        checkOut: stripTimestamp(
+          apiBooking.checkOut ||
+            apiBooking.check_out ||
+            cachedBooking?.checkOut ||
+            searchForm.checkOut
+        ),
+        checkInTime:
+          apiBooking.checkInTime ||
+          apiBooking.arrivalTime ||
+          cachedBooking?.checkInTime ||
+          guestInfo.arrivalNote,
+      });
     } catch (err) {
-      setLookupError(`Network error during lookup: ${err.message}`);
+      if (cachedBooking) {
+        setLookupResult({
+          ...cachedBooking,
+          checkIn: stripTimestamp(cachedBooking.checkIn),
+          checkOut: stripTimestamp(cachedBooking.checkOut),
+        });
+      } else {
+        setLookupError(`Network error during lookup: ${err.message}`);
+      }
     } finally {
       setIsLookingUp(false);
     }
@@ -820,7 +1076,10 @@ export default function App() {
   const handleUpdateSearch = () => {
     setSearchShuffleSeed((prev) => prev + 1);
     setBookedToast(
-      `Updated rooms for ${searchForm.guests} (${searchForm.checkIn} to ${searchForm.checkOut})`
+      `Updated rooms for ${searchForm.guests} (${formatDateRangeSlash(
+        searchForm.checkIn,
+        searchForm.checkOut
+      )})`
     );
     setTimeout(() => setBookedToast(""), 4000);
   };
@@ -837,6 +1096,57 @@ export default function App() {
   const grandTotal = subtotalAmount + serviceTax;
   const formatNaira = (amount) => `₦${Math.round(amount).toLocaleString()}`;
 
+  const handleDownloadReceipt = () => {
+    const cached = getLatestBookingForEmail(guestInfo.email);
+    const receiptText = [
+      "==========================================",
+      "          ELAN HOTELS - BOOKING RECEIPT",
+      "==========================================",
+      `Booking ID:      ${bookingRef}`,
+      `Status:          CONFIRMED`,
+      `Guest Name:      ${guestInfo.fullName || cached?.guestName || "Guest"}`,
+      `Guest Email:     ${guestInfo.email || cached?.guestEmail || "N/A"}`,
+      `Guest Phone:     ${guestInfo.phone || "N/A"}`,
+      `Room / Suite:    ${selectedRoom?.title || cached?.roomTitle || "Suite"}`,
+      `Check In Date:   ${formatDateRangeSlash(
+        searchForm.checkIn,
+        searchForm.checkOut
+      )}`,
+      `Duration:        ${nightsCount} ${nightsCount === 1 ? "Night" : "Nights"}`,
+      `Check-In Time:   ${guestInfo.arrivalNote}`,
+      `Payment Method:  ${
+        paymentMethod === "card" ? "Debit / Credit Card" : "Bank Transfer"
+      }`,
+      `Room Subtotal:   ${formatNaira(subtotalAmount)}`,
+      `Taxes & Fees:    ${formatNaira(serviceTax)}`,
+      `Total Paid:      ${formatNaira(grandTotal)}`,
+      "==========================================",
+      "Thank you for staying with Elan Hotels.",
+      "Support: reservations@elanhotels.com",
+    ].join("\n");
+
+    const blob = new Blob([receiptText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `elan-hotels-receipt-${bookingRef}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setPaymentModal({
+      open: false,
+      status: "success",
+      errorMessage: "",
+    });
+    setBookedToast(
+      `Receipt downloaded (${bookingRef}) • ${selectedRoom.title}`
+    );
+    setTimeout(() => setBookedToast(""), 6000);
+    navigateTo("home");
+  };
+
   const requestedGuests = getGuestCapacity(searchForm.guests);
 
   const filteredRooms = (() => {
@@ -848,21 +1158,33 @@ export default function App() {
       return true;
     });
 
-    if (searchShuffleSeed === 0) {
-      return baseList;
+    let items = [...baseList];
+
+    if (searchShuffleSeed !== 0) {
+      items.sort((a, b) => {
+        const numericA = Number(String(a.id).replace(/\D/g, "")) || 1;
+        const numericB = Number(String(b.id).replace(/\D/g, "")) || 1;
+        const hashA = (numericA * 37 + searchShuffleSeed * 17) % 100;
+        const hashB = (numericB * 37 + searchShuffleSeed * 17) % 100;
+        return hashA / 100 - hashB / 100;
+      });
+
+      items.sort((a, b) => {
+        const aFits = getRoomGuestCapacity(a.guests) >= requestedGuests ? 0 : 1;
+        const bFits = getRoomGuestCapacity(b.guests) >= requestedGuests ? 0 : 1;
+        return aFits - bFits;
+      });
     }
 
-    const shuffled = [...baseList].sort((a, b) => {
-      const hashA = ((Number(a.id) || 1) * 37 + searchShuffleSeed * 17) % 100;
-      const hashB = ((Number(b.id) || 1) * 37 + searchShuffleSeed * 17) % 100;
-      return hashA / 100 - hashB / 100;
-    });
+    if (recommendSort === "PriceLowToHigh") {
+      items.sort((a, b) => a.priceNum - b.priceNum);
+    } else if (recommendSort === "PriceHighToLow") {
+      items.sort((a, b) => b.priceNum - a.priceNum);
+    } else if (recommendSort === "TopRated") {
+      items.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+    }
 
-    return shuffled.sort((a, b) => {
-      const aFits = getRoomGuestCapacity(a.guests) >= requestedGuests ? 0 : 1;
-      const bFits = getRoomGuestCapacity(b.guests) >= requestedGuests ? 0 : 1;
-      return aFits - bFits;
-    });
+    return items;
   })();
 
   const selectedRoomAvailability = checkRoomAvailability(
@@ -977,19 +1299,6 @@ export default function App() {
                   }
                 >
                   Find Booking
-                </button>
-                <button
-                  type="button"
-                  className="nav-item"
-                  onClick={() =>
-                    handleNavClick(() => {
-                      document
-                        .getElementById("footer")
-                        ?.scrollIntoView({ behavior: "smooth" });
-                    })
-                  }
-                >
-                  Contact Us
                 </button>
 
                 <button
@@ -1283,6 +1592,20 @@ export default function App() {
                   Clear filters
                 </button>
               )}
+
+              <div className="recommend-box">
+                <select
+                  id="recommend-select"
+                  aria-label="Sort rooms"
+                  value={recommendSort}
+                  onChange={(e) => setRecommendSort(e.target.value)}
+                >
+                  <option value="Recommended">Recommended</option>
+                  <option value="PriceLowToHigh">Price: Low to High</option>
+                  <option value="PriceHighToLow">Price: High to Low</option>
+                  <option value="TopRated">Top Rated</option>
+                </select>
+              </div>
             </div>
 
             <div className="rooms-grid catalog-grid">
@@ -1332,7 +1655,7 @@ export default function App() {
               className="back-link"
               onClick={() => navigateTo("rooms")}
             >
-              ‹ Our Rooms
+              ‹ Room Details
             </button>
 
             <div className="detail-card">
@@ -1477,12 +1800,12 @@ export default function App() {
                       type="date"
                       required
                       min={earliestCheckInDate}
-                      value={searchForm.checkIn}
+                      value={stripTimestamp(searchForm.checkIn)}
                       onChange={(e) => {
                         setBookingValidationFlags([]);
                         setSearchForm({
                           ...searchForm,
-                          checkIn: e.target.value,
+                          checkIn: stripTimestamp(e.target.value),
                         });
                       }}
                     />
@@ -1493,13 +1816,16 @@ export default function App() {
                     <input
                       type="date"
                       required
-                      min={searchForm.checkIn || earliestCheckInDate}
-                      value={searchForm.checkOut}
+                      min={
+                        stripTimestamp(searchForm.checkIn) ||
+                        earliestCheckInDate
+                      }
+                      value={stripTimestamp(searchForm.checkOut)}
                       onChange={(e) => {
                         setBookingValidationFlags([]);
                         setSearchForm({
                           ...searchForm,
-                          checkOut: e.target.value,
+                          checkOut: stripTimestamp(e.target.value),
                         });
                       }}
                     />
@@ -1558,11 +1884,11 @@ export default function App() {
                 <div className="summary-rows">
                   <div className="summary-row">
                     <span>Check-In</span>
-                    <strong>{searchForm.checkIn}</strong>
+                    <strong>{stripTimestamp(searchForm.checkIn)}</strong>
                   </div>
                   <div className="summary-row">
                     <span>Check-Out</span>
-                    <strong>{searchForm.checkOut}</strong>
+                    <strong>{stripTimestamp(searchForm.checkOut)}</strong>
                   </div>
                   <div className="summary-row">
                     <span>Guests</span>
@@ -1591,51 +1917,32 @@ export default function App() {
         </section>
       )}
 
-      {/* BOOKING LOOKUP MODAL (POST /bookings/lookup) */}
+      {/* EMAIL-ONLY BOOKING LOOKUP MODAL */}
       {showLookupModal && (
         <div
           className="booking-modal-backdrop"
           onClick={() => setShowLookupModal(false)}
         >
           <div
-            className="booking-modal-card"
+            className="booking-modal-card lookup-modal-card"
             onClick={(e) => e.stopPropagation()}
           >
             <h3>Find Your Reservation</h3>
             <p className="modal-desc">
-              Enter your booking reference and guest email to look up your
-              booking.
+              Enter your email address to retrieve your latest booking details.
             </p>
 
-            <form onSubmit={handleBookingLookupSubmit}>
-              <div className="form-group">
-                <label>Booking Reference</label>
+            <form onSubmit={handleBookingLookupSubmit} className="lookup-form">
+              <div className="form-group lookup-email-field">
+                <label htmlFor="lookup-guest-email">Guest Email</label>
                 <input
-                  type="text"
-                  required
-                  placeholder="e.g. ELN-123456 or ID-123455"
-                  value={lookupForm.bookingReference}
-                  onChange={(e) =>
-                    setLookupForm({
-                      ...lookupForm,
-                      bookingReference: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Guest Email</label>
-                <input
+                  id="lookup-guest-email"
                   type="email"
                   required
                   placeholder="you@example.com"
                   value={lookupForm.guestEmail}
                   onChange={(e) =>
-                    setLookupForm({
-                      ...lookupForm,
-                      guestEmail: e.target.value,
-                    })
+                    setLookupForm({ guestEmail: e.target.value })
                   }
                 />
               </div>
@@ -1646,39 +1953,41 @@ export default function App() {
                 </div>
               )}
 
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-outline-danger"
-                  onClick={() => setShowLookupModal(false)}
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  className="btn-teal"
-                  disabled={isLookingUp}
-                >
-                  {isLookingUp ? "Searching..." : "Lookup Booking"}
-                </button>
-              </div>
+              <button
+                type="submit"
+                className="btn-teal btn-full"
+                disabled={isLookingUp}
+              >
+                {isLookingUp ? "Searching..." : "Find Latest Booking"}
+              </button>
             </form>
 
             {lookupResult && (
-              <div className="modal-ref-box" style={{ marginTop: "18px" }}>
-                <span>Reservation Found</span>
-                <strong>
-                  {lookupResult.bookingReference ||
-                    lookupResult.reference ||
-                    lookupForm.bookingReference}
-                </strong>
-                <p className="modal-desc" style={{ marginBottom: 0 }}>
-                  {lookupResult.guestName && `Guest: ${lookupResult.guestName}`}
-                  {lookupResult.checkIn &&
-                    lookupResult.checkOut &&
-                    ` • ${lookupResult.checkIn} to ${lookupResult.checkOut}`}
-                  {lookupResult.status && ` • Status: ${lookupResult.status}`}
-                </p>
+              <div className="lookup-details-box">
+                <div className="lookup-ref-header">
+                  <span>Reference ID</span>
+                  <strong>{lookupResult.bookingReference}</strong>
+                </div>
+
+                <div className="summary-rows">
+                  <div className="summary-row">
+                    <span>Guest Name</span>
+                    <strong>{lookupResult.guestName}</strong>
+                  </div>
+                  <div className="summary-row">
+                    <span>Check In Date</span>
+                    <strong>
+                      {formatDateRangeSlash(
+                        lookupResult.checkIn,
+                        lookupResult.checkOut
+                      )}
+                    </strong>
+                  </div>
+                  <div className="summary-row">
+                    <span>Check-In Time</span>
+                    <strong>{lookupResult.checkInTime}</strong>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1776,20 +2085,9 @@ export default function App() {
                 <button
                   type="button"
                   className="btn-teal payment-done-btn"
-                  onClick={() => {
-                    setPaymentModal({
-                      open: false,
-                      status: "success",
-                      errorMessage: "",
-                    });
-                    setBookedToast(
-                      `Booking confirmed (${bookingRef}) • ${selectedRoom.title}`
-                    );
-                    setTimeout(() => setBookedToast(""), 6000);
-                    navigateTo("home");
-                  }}
+                  onClick={handleDownloadReceipt}
                 >
-                  Done
+                  Download Receipt
                 </button>
               </>
             ) : (
@@ -2029,11 +2327,11 @@ export default function App() {
                 <div className="summary-rows">
                   <div className="summary-row">
                     <span>Check-In</span>
-                    <strong>{searchForm.checkIn}</strong>
+                    <strong>{stripTimestamp(searchForm.checkIn)}</strong>
                   </div>
                   <div className="summary-row">
                     <span>Check-Out</span>
-                    <strong>{searchForm.checkOut}</strong>
+                    <strong>{stripTimestamp(searchForm.checkOut)}</strong>
                   </div>
                   <div className="summary-row">
                     <span>Duration</span>
