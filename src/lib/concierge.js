@@ -67,14 +67,29 @@ export const conciergeTopics = hotelFaq.map(({ label, question }) => ({
   question,
 }));
 
-export function getConciergeReply(message) {
+export function getConciergeMatch(message) {
   if (!message || !message.trim()) {
-    return "Please enter a question so I can assist you.";
+    return {
+      answer: "Please enter a question so I can assist you.",
+      confidence: 1,
+      kind: "empty",
+    };
   }
 
   const cleaned = message.toLowerCase().trim().replace(/[^a-z0-9\s]/g, " ");
+  const greeting = cleaned.replace(/\s+/g, " ").trim();
+  if (/^(hi|hello|hey)(?: there)?$/.test(greeting)) {
+    return {
+      answer: "Hello! Welcome to Elan Hotels. I can help with breakfast, check-in and checkout, the pool, Wi-Fi, or housekeeping. What would you like to know?",
+      confidence: 1,
+      kind: "greeting",
+    };
+  }
+
   const guestVector = normalize(termCounts(cleaned));
-  if (guestVector.size === 0) return UNKNOWN_ANSWER;
+  if (guestVector.size === 0) {
+    return { answer: UNKNOWN_ANSWER, confidence: 0, kind: "unmatched" };
+  }
 
   let bestScore = 0;
   let bestAnswer = UNKNOWN_ANSWER;
@@ -89,5 +104,14 @@ export function getConciergeReply(message) {
     }
   }
 
-  return bestScore >= MATCH_THRESHOLD ? bestAnswer : UNKNOWN_ANSWER;
+  const matched = bestScore >= MATCH_THRESHOLD;
+  return {
+    answer: matched ? bestAnswer : UNKNOWN_ANSWER,
+    confidence: Math.min(1, bestScore),
+    kind: matched ? "faq" : "unmatched",
+  };
+}
+
+export function getConciergeReply(message) {
+  return getConciergeMatch(message).answer;
 }

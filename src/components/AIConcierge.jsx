@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import conciergeIcon from "../assets/concierge.png";
-import { conciergeTopics, getConciergeReply } from "../lib/concierge";
+import { conciergeTopics } from "../lib/concierge";
+import { getConciergeResponse } from "../lib/conciergeResponse";
 import "./AIConcierge.css";
 
 const WELCOME = {
@@ -11,7 +12,8 @@ const MAX_MESSAGE_LENGTH = 500;
 
 export default function AIConcierge({ hidden = false }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([WELCOME]);
+  const [conversation, setConversation] = useState({ messages: [WELCOME], fallbackCount: 0 });
+  const { messages } = conversation;
   const [draft, setDraft] = useState("");
   const launcherRef = useRef(null);
   const inputRef = useRef(null);
@@ -38,17 +40,23 @@ export default function AIConcierge({ hidden = false }) {
     const question = text.trim().slice(0, MAX_MESSAGE_LENGTH);
     if (!question) return;
 
-    setMessages((previous) => [
-      ...previous,
-      { role: "user", text: question },
-      { role: "assistant", text: getConciergeReply(question) },
-    ]);
+    setConversation((previous) => {
+      const result = getConciergeResponse(question, previous);
+      return {
+        fallbackCount: result.fallbackCount,
+        messages: [
+          ...previous.messages,
+          { role: "user", text: question },
+          { role: "assistant", text: result.answer, handoff: result.handoff },
+        ],
+      };
+    });
     setDraft("");
     inputRef.current?.focus();
   }
 
   function clearChat() {
-    setMessages([WELCOME]);
+    setConversation({ messages: [WELCOME], fallbackCount: 0 });
     setDraft("");
     inputRef.current?.focus();
   }
