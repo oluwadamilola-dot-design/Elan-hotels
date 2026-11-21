@@ -23,8 +23,8 @@ Wi-Fi, and housekeeping.
   panel preserves the conversation. Clear chat or a page reload resets it.
 - The chatbot runs locally in the browser and needs no API key or Colab runtime.
   It has no booking lookup, booking creation, payment, or staff-action access.
-- The panel is hidden during checkout and existing booking dialogs so it does
-  not cover those controls. The underlying booking handlers are unchanged.
+- The widget is available on home, rooms, room details, guest details, and payment
+  screens. It temporarily hides while a booking dialog is open.
 
 Run `npm ci`, `npm run dev`, `npm test`, `npm run build`, and
 `npm run lint` using the existing project tooling.

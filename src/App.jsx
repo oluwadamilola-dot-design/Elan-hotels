@@ -2503,7 +2503,7 @@ export default function App() {
         </footer>
       )}
       <AIConcierge
-        hidden={isCheckoutFlow || showLookupModal || showBookingModal || paymentModal.open}
+        hidden={showLookupModal || showBookingModal || paymentModal.open}
       />
     </div>
   );
